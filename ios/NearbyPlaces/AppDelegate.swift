@@ -2,6 +2,7 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import GoogleMaps
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -23,11 +24,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     window = UIWindow(frame: UIScreen.main.bounds)
 
+    GMSServices.provideAPIKey("AIzaSyA5EwWICbPAzb8c6FX1N0BoSvpZrscC-Nw")
+
     factory.startReactNative(
       withModuleName: "NearbyPlaces",
       in: window,
       launchOptions: launchOptions
     )
+
 
     return true
   }
