@@ -3,7 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 
 export default function App() {
   return <View style={styles.container} >
-    <Text>Hello World</Text>
+    <Text style={{ color: 'black' }}>Hello World</Text>
   </View>;
 }
 
