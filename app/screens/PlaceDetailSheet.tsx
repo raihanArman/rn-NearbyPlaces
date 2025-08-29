@@ -2,7 +2,7 @@
 import { colors } from "../theme/theme";
 import { PlaceDetailSheetProps, PlaceDetailSheetRef } from "../types/types";
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { Alert, Linking, Platform, View } from "react-native";
 import { Image, SafeAreaView, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native";
 import { forwardRef, useImperativeHandle } from "react";
 import BottomSheet, { BottomSheetBackdrop, BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
@@ -85,6 +85,29 @@ const PlaceDetailSheet = forwardRef<PlaceDetailSheetRef, PlaceDetailSheetProps>(
             )
         }
 
+        const openGoogleMaps = (lat: number | undefined, lng: number | undefined) => {
+            if (!lat || !lng) return;
+            const url = Platform.select({
+                ios: `maps://app?daddr=${lat},${lng}`,
+                android: `google.navigation:q=${lat},${lng}`,
+            });
+            if (url) {
+                Linking.openURL(url).catch(err => {
+                    Alert.alert('Error', 'Failed to open map: ' + err.message);
+                });
+            }
+        };
+
+        const linkMaps = () => {
+            return (
+                <View style={[styles.linkMaps]}>
+                    <TouchableOpacity style={styles.linkMapsText} onPress={() => openGoogleMaps(place?.lat, place?.lng)}>
+                        <Typo size={16} fontWeight={'600'} style={styles.linkMapsText}>Open in Maps</Typo>
+                    </TouchableOpacity>
+                </View>
+            )
+        }
+
         const content = () => {
             return (
                 <View>
@@ -92,6 +115,8 @@ const PlaceDetailSheet = forwardRef<PlaceDetailSheetRef, PlaceDetailSheetProps>(
                     {image()}
                     {description()}
                     {hours()}
+
+                    {linkMaps()}
                 </View>
             )
         }
@@ -194,5 +219,20 @@ const styles = StyleSheet.create({
     hours: {
         marginVertical: 16,
         gap: 8,
+    },
+    linkMaps: {
+        marginBottom: 30,
+        marginTop: 16,
+    },
+    linkMapsText: {
+        color: colors.white,
+        fontWeight: '600',
+        fontSize: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: colors.red,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

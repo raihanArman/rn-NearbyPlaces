@@ -3,25 +3,33 @@ import React from 'react'
 import Typo from './Typo'
 import { colors } from '../theme/theme'
 import RNImage from './Image'
+import LinearGradient from 'react-native-linear-gradient';
 // import { CachedImage } from '@georstat/react-native-image-cache';
 
 const PlaceItem = ({ uri, name, distance, onPress }: { uri: string, name: string, distance: number, onPress: () => void }) => {
-    console.log(uri);
     return (
         <TouchableOpacity onPress={onPress} style={styles.container}>
             <RNImage
                 uri={uri}
-                style={{ width: "100%", height: 120 }}
+                style={{ width: "100%", height: 120, borderRadius: 12 }}
             />
+            {/* Gradient Overlay */}
+            <LinearGradient
+                colors={['rgba(0,0,0,0.8)', 'transparent']}
+                start={{ x: 0, y: 1 }}
+                end={{ x: 0, y: 0 }}
+                style={styles.gradient}
+            />
+
             <View style={styles.info}>
-                <Typo size={20} color={colors.black} fontWeight="700" children={name} />
-                <Typo size={14} color={colors.neutral600} fontWeight="500" children={distance + " km"} />
+                <Typo size={18} color={colors.white} fontWeight="700" children={name} />
+                <Typo size={14} color={colors.neutral200} fontWeight="500" children={distance + " km"} />
             </View>
         </TouchableOpacity>
     )
 }
 
-export default PlaceItem
+export default PlaceItem;
 
 const styles = StyleSheet.create({
     container: {
@@ -38,9 +46,17 @@ const styles = StyleSheet.create({
         // Android shadow
         elevation: 6,
         width: 180,
-        height: 110,
-        // overflow untuk Android supaya shadow tetap terlihat
+        height: 120,
         overflow: Platform.OS === "android" ? "visible" : "visible",
+    },
+    gradient: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 70,
+        borderEndEndRadius: 12,
+        borderEndStartRadius: 12,
     },
     info: {
         position: "absolute",
@@ -48,8 +64,6 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         padding: 16,
-        gap: 8,
-        alignContent: "flex-end",
         justifyContent: "flex-end",
     }
-})
+});

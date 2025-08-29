@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, ActivityIndicator, Alert, Platform, Text, FlatList, PermissionsAndroid } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Alert, Platform, Text, FlatList, PermissionsAndroid, Button, TouchableOpacity } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import GetLocation, { Location } from 'react-native-get-location';
 import { useMaps } from '../hooks/mapsContext';
@@ -11,7 +11,8 @@ import Typo from '../components/Typo';
 import PlaceDetailSheet from './PlaceDetailSheet';
 import { PlaceDetailSheetRef } from '../types/types';
 import PlaceChipList from '../components/PlaceTypeChip';
-// Untuk Expo, gunakan `import * as Location from 'expo-location';`
+import * as Icons from "phosphor-react-native";
+import { colors } from '../theme/theme';
 
 const MapsScreen = () => {
     const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
@@ -23,23 +24,26 @@ const MapsScreen = () => {
     const [radius, setRadius] = useState(5);
     const [placeId, setPlaceId] = useState<string>("");
     const [loadingPlaces, setLoadingPlaces] = useState(true);
+    const [zoomLevel, setZoomLevel] = useState(0.03);
 
     useEffect(() => {
         fetchCurrentLocation();
     }, []);
 
     useEffect(() => {
-        fetchPlaces()
+        if (currentLocation) {
+            fetchPlaces();
+        }
     }, [currentLocation, type, radius]);
 
     useEffect(() => {
         if (mapRef.current && currentLocation) {
             const coordinates = [
                 { latitude: currentLocation.latitude, longitude: currentLocation.longitude },
-                ...places.map(p => ({ latitude: p.lat, longitude: p.lng })),
+                ...places.map(p => ({ latitude: p.lat, longitude: p.lng, })),
             ];
 
-            if (coordinates.length > 0) {
+            if (coordinates.length > 1) {
                 mapRef.current.fitToCoordinates(coordinates, {
                     edgePadding: { top: 100, right: 100, bottom: 300, left: 100 },
                     animated: true,
@@ -80,42 +84,24 @@ const MapsScreen = () => {
 
             if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
                 Alert.alert('Permission Denied', 'Location permission is required.');
+                setLoading(false);
                 return;
             }
         }
 
-        GetLocation.getCurrentPosition({
-            enableHighAccuracy: true,
-            timeout: 60000,
-        })
-            .then(location => {
-                setCurrentLocation(location);
-                setLoading(false);
-            })
-            .catch(error => {
-                setLoading(false);
-                Alert.alert('Error', 'Failed to get location: ' + error.message);
+        try {
+            const location = await GetLocation.getCurrentPosition({
+                enableHighAccuracy: true,
+                timeout: 60000,
             });
 
-        console.log(`Check current location -> ${currentLocation}`);
+            setCurrentLocation(location);
+            setLoading(false);
+        } catch (error) {
+            setLoading(false);
+            Alert.alert('Error', 'Failed to get location: ' + error);
+        }
     };
-
-    if (loading) {
-        return (
-            <View style={styles.container}>
-                <ActivityIndicator size="large" />
-            </View>
-        );
-    }
-
-    if (!currentLocation) {
-        return (
-            <View style={styles.container}>
-                <Text>Tidak dapat menampilkan lokasi.</Text>
-            </View>
-        );
-    }
-
 
     const openBottomSheet = () => {
         bottomSheetRef.current?.expand();
@@ -125,25 +111,78 @@ const MapsScreen = () => {
         bottomSheetRef.current?.close();
     };
 
+    const zoomIn = () => {
+        if (mapRef.current && currentLocation) {
+            const newDelta = zoomLevel / 2;
+            mapRef.current.animateToRegion({
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                latitudeDelta: newDelta,
+                longitudeDelta: newDelta,
+            }, 200);
+            setZoomLevel(newDelta);
+        }
+    };
+
+    const zoomOut = () => {
+        if (mapRef.current && currentLocation) {
+            const newDelta = zoomLevel * 2;
+            mapRef.current.animateToRegion({
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                latitudeDelta: newDelta,
+                longitudeDelta: newDelta,
+            }, 200);
+            setZoomLevel(newDelta);
+        }
+    };
+
+
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <ActivityIndicator size="large" />
+            </View>
+        );
+    }
+
+    if (!currentLocation && !loading) {
+        return (
+            <View style={styles.container}>
+                <Text style={{ marginBottom: 16, fontSize: 16 }}>
+                    Can't getting current Location.
+                </Text>
+                <Button
+                    title="Try again"
+                    onPress={fetchCurrentLocation}
+                />
+            </View>
+        );
+    }
+
+
     return (
         <View style={styles.container}>
             <MapView
                 // provider={PROVIDER_GOOGLE}
                 ref={mapRef}
                 style={styles.map}
-                initialRegion={{
-                    latitude: currentLocation?.latitude,
-                    longitude: currentLocation?.longitude,
-                    latitudeDelta: 0.0922,
-                    longitudeDelta: 0.0421,
-                }}
-                showsUserLocation={true} // Menampilkan titik biru lokasi pengguna
+                region={
+                    currentLocation ? {
+                        latitude: currentLocation.latitude,
+                        longitude: currentLocation.longitude,
+                        latitudeDelta: zoomLevel,
+                        longitudeDelta: zoomLevel,
+                    } : undefined
+                }
+                showsUserLocation={true}
                 onMapReady={() => console.log('Map is ready')}
+                zoomControlEnabled
             >
                 <Marker
                     coordinate={{
-                        latitude: currentLocation?.latitude,
-                        longitude: currentLocation?.longitude,
+                        latitude: currentLocation!.latitude,
+                        longitude: currentLocation!.longitude,
                     }}
                     title="Your Location"
                     description="You are here"
@@ -162,7 +201,14 @@ const MapsScreen = () => {
                     />
                 ))}
             </MapView>
-
+            <View style={styles.zoomControls}>
+                <TouchableOpacity onPress={zoomIn} style={styles.zoomButton}>
+                    <Icons.Plus color={colors.black} size={24} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={zoomOut} style={styles.zoomButton}>
+                    <Icons.Minus color={colors.black} size={24} />
+                </TouchableOpacity>
+            </View>
             <View style={styles.placesList}>
                 <View style={styles.header}>
                     <Typo
@@ -193,7 +239,7 @@ const MapsScreen = () => {
                         <View style={styles.loadingContainer}>
                             <Typo size={20} fontWeight="600">Loading...</Typo>
                         </View>
-                    ) : (
+                    ) : places.length > 0 ? (
                         <FlatList
                             contentContainerStyle={{ paddingLeft: 12, paddingBottom: 24, }}
                             data={places}
@@ -212,6 +258,10 @@ const MapsScreen = () => {
                             horizontal
                             showsHorizontalScrollIndicator={false}
                         />
+                    ) : (
+                        <View style={styles.notFound}>
+                            <Typo style={{ textAlign: "center" }} >Places not found</Typo>
+                        </View>
                     )}
                 </View>
             </View>
@@ -258,6 +308,37 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    zoomControls: {
+        position: 'absolute',
+        right: 16,
+        bottom: 320,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+    },
+    zoomButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: colors.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 4,
+        marginBottom: 16
+    },
+    zoomText: {
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
+    notFound: {
+        alignContent: "center",
+        justifyContent: "center",
+        flex: 1
     }
 });
 
